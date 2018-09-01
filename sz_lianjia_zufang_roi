@@ -68,6 +68,7 @@ def zf_roi(url):
             with open("zj.txt","a") as zj:
                 zj.write(str((name, price, "%.2f" %average_rental, '%.2f%%' %(roi*100)))+", ")
 
+
 if __name__ == '__main__':
     urls=get_xqs()
     main(urls)
