@@ -1,44 +1,46 @@
+
 from lxml import etree
 import requests
 import multiprocessing as mp
 
-url="https://sz.lianjia.com/xiaoqu/"
+url = "https://sz.lianjia.com/xiaoqu/"
 
 def get_qlist():
-    r=requests.get(url)
-    qlist=set()
-    html=etree.HTML(r.content)
-    qus=html.xpath("/html/body/div[3]/div[1]/dl[2]/dd/div/div")
+    r = requests.get(url)
+    qlist = set()
+    html = etree.HTML(r.content)
+    qus = html.xpath("/html/body/div[3]/div[1]/dl[2]/dd/div/div")
 
-    qus=qus[0].xpath("a")
-    sub_qlist={"https://sz.lianjia.com"+a.get("href") for a in qus}
-    qlist=qlist|sub_qlist
+    qus = qus[0].xpath("a")
+    sub_qlist = {"https://sz.lianjia.com" + a.get("href") for a in qus}
+    qlist = qlist | sub_qlist
     return qlist
 
 def get_jdb():
-    jdb=set()
+    jdb = set()
     for i in get_qlist():
-        r=requests.get(i)
-        html=etree.HTML(r.content)
-        l=html.xpath('/html/body/div[3]/div[1]/dl[2]/dd/div/div[2]')
-        li=l[0].xpath("a")
-        jdb=jdb|{"https://sz.lianjia.com"+x.get('href') for x in li}
+        r = requests.get(i)
+        html = etree.HTML(r.content)
+        l = html.xpath('/html/body/div[3]/div[1]/dl[2]/dd/div/div[2]')
+        li = l[0].xpath("a")
+        jdb = jdb | {"https://sz.lianjia.com" + x.get('href') for x in li}
+        print(jdb)
     return jdb
 
 def get_xqs():
-    xqs=set()
+    xqs = set()
     for i in get_jdb():
-        r=requests.get(i)
-        html=etree.HTML(r.content)
-        l=html.xpath('//div[@class="info"]/div[1]/a')
-        xqs=xqs|{i.get("href") for i in l}
+        r = requests.get(i)
+        html = etree.HTML(r.content)
+        l = html.xpath('//div[@class="info"]/div[1]/a')
+        xqs = xqs | {i.get("href") for i in l}
+        print(xqs)
     return xqs
-
 
 def main(urls):
     # 用进程池运行程序
-    pool=mp.Pool()
-    pool.map(zf_roi,urls)
+    pool = mp.Pool()
+    pool.map(zf_roi, urls)
 
 def zf_roi(url):
     # 找出小区名字和单价
@@ -53,22 +55,22 @@ def zf_roi(url):
         # 算出小区的平均租金（不含自如合租）
         r2 = requests.get(r"https://sz.lianjia.com/zufang/bd1c" + url[-14:-1] + r"/")
         html = etree.HTML(r2.content)
-        rentals = html.xpath('//div/div[2]/div[@class="price"]/span/text()')    # 租房房源租金列表
-        areas = html.xpath('//div[@class="col-1"]/div/span[@class="meters"]/text()') #租房房源的面积
+        rentals = html.xpath('//div/div[2]/div[@class="price"]/span/text()')  # 租房房源租金列表
+        areas = html.xpath('//div[@class="col-1"]/div/span[@class="meters"]/text()')  # 租房房源的面积
         if rentals != []:
-            rental_area=[]
+            rental_area = []
             for (rental, area) in zip(rentals, areas):
                 rental_area.append((float(rental), float(area.strip()[:-2])))
-            ras=[]
+            ras = []
             for ra in rental_area:
-                ras.append(ra[0]/ra[1])
-            average_rental=sum(ras)/len(ras)
-            roi=average_rental*12/int(price)    # 租金回报率
-            print((name, price, "%.2f" %average_rental, '%.2f%%' %(roi*100))) #输出小区名字，每平米的房价，平均租金单价，租金回报率（租金*12/每平米的房价）
-            with open("zj.txt","a") as zj:
-                zj.write(str((name, price, "%.2f" %average_rental, '%.2f%%' %(roi*100)))+", ")
-
+                ras.append(ra[0] / ra[1])
+            average_rental = sum(ras) / len(ras)
+            roi = average_rental * 12 / int(price)  # 租金回报率
+            print((name, price, "%.2f" % average_rental,
+                   '%.2f%%' % (roi * 100)))  # 输出小区名字，每平米的房价，平均租金单价，租金回报率（租金*12/每平米的房价）
+            with open("zj.txt", "a") as zj:
+                zj.write(str((name, price, "%.2f" % average_rental, '%.2f%%' % (roi * 100))) + ", ")
 
 if __name__ == '__main__':
-    urls=get_xqs()
+    urls = get_xqs()
     main(urls)
